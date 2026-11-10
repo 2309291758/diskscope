@@ -197,6 +197,12 @@ src/
 
 见 [CONTRIBUTING.md](CONTRIBUTING.md)：改 `rules/categories.json` 即可，不需要写 Rust。
 
+### 交接文档
+
+[`docs/HANDOFF.md`](docs/HANDOFF.md)：给接手的人或 AI 助手的完整交接 —— 构建与启动的坑、代码地图
+（含关键行号）、已踩过的坑（分类引擎语义、根目录判定、字体选型、WebView2 崩溃根因）、
+下一步待实现的两个需求及其技术方案。
+
 ---
 
 ## License
