@@ -1,0 +1,461 @@
+/* DiskScope — 「米色 + 圆角药丸」视觉层。
+   取色就三档：纸色 #fefdfb、浅底 #f6f4ef、描边 #eae7de；
+   彩色只留给分类色和三个判词，其余一律黑灰。 */
+
+:root {
+  --paper: #fefdfb;
+  --card: #ffffff;
+  --tint: #f6f4ef;
+  --tint-2: #eae8e1;
+  --rule: #eae7de;
+  --ink: #0a0a0a;
+  --ink-2: #3a3a37;
+  --ink-3: #7a7a74;
+  --ink-4: #a8a8a1;
+  --ikb: #002fa7;
+  --ikb-07: rgba(0, 47, 167, .07);
+  --ikb-09: rgba(0, 47, 167, .09);
+  --safe: #0d6b3a;
+  --warn: #a1650f;
+  --danger: #a12b2b;
+  /* 本机实测可用：没有 Inter / JetBrains Mono，所以正文用 Segoe UI Variable，
+     大标题用它的 Light 字重，数字用 Cascadia Mono 保证同宽。
+
+     中文这一档是专门换过的：原来是 Microsoft YaHei UI，Regular 在 msyh.ttc、
+     Bold 在 msyhbd.ttc —— 两份独立字形，字宽不一样。选中一行时 .trow.sel 把
+     名字加到 600，整行中文就整体位移一两个像素，看着像抖了一下。
+     Noto Sans SC 在本机是 NotoSansSC-VF.ttf 一个可变字体文件，100–900 用同一
+     份字形、同一组宽度，加粗不再改字宽。注册表里它是干净的族名「Noto Sans SC」，
+     比带 _Regular/_Bold 后缀的族名可靠。
+     Latin 仍然先走 Segoe UI Variable：每个字符独立回落，中文才会落到 Noto。 */
+  --sans: "Segoe UI Variable Text", "Segoe UI", "Noto Sans SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  --disp: "Segoe UI Variable Display Light", "Segoe UI Variable Display", "Segoe UI Light", "Microsoft YaHei UI Light", "Noto Sans SC", var(--sans);
+  --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  /* 控件的描边。--rule 是做分隔线和卡片的，用来勾按钮太淡，
+     用户的原话是「胶囊和背景融为一体了，看不出来」。 */
+  --ctl: #dcd7c9;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 12.5px/1.45 var(--sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+code { font-family: var(--mono); font-size: 11.5px; letter-spacing: -.01em; }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+
+/* ---------- 顶栏 ---------- */
+.top {
+  display: flex; align-items: center; gap: 22px;
+  padding: 13px 18px 11px;
+  flex-wrap: wrap; row-gap: 10px;
+}
+.brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.mark, .logo {
+  width: 27px; height: 27px; border-radius: 8px;
+  background: var(--ikb); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+  flex: none;
+}
+.wordmark { font-family: var(--disp); font-weight: 400; font-size: 20px; letter-spacing: .005em; }
+.ver {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em;
+  color: var(--ink-3); white-space: nowrap;
+}
+/* 动作条：描边药丸。原来是纯文字、hover 才浮出浅底，结果顶栏看起来像一段
+   说明文字而不是一排能点的东西。描边给它一个可见的边界。 */
+.top-actions { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; row-gap: 6px; }
+.act {
+  font-size: 12px; color: var(--ink-2); padding: 5px 10px; border-radius: 7px;
+  background: var(--card); border: 1px solid var(--ctl);
+  transition: background .12s, color .12s, border-color .12s; white-space: nowrap;
+}
+.act:hover:not(:disabled) { background: var(--tint); color: var(--ink); border-color: #cec8b8; }
+.act.on { background: var(--ikb-09); color: var(--ikb); font-weight: 600; border-color: rgba(0, 47, 167, .3); }
+.act:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 盘卡：三行（容量% / 2px 细线 / 已用-总量）。线只有 2px，用户明确嫌粗过。 */
+.drives { display: flex; gap: 10px; flex: none; }
+.drive {
+  width: 110px; padding: 8px 11px 9px; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--rule); text-align: left;
+  transition: border-color .12s, background .12s;
+}
+.drive:hover:not(:disabled) { border-color: var(--tint-2); }
+.drive:disabled { opacity: .45; cursor: not-allowed; }
+.drive .drow { display: flex; align-items: baseline; justify-content: space-between; }
+.drive b { font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: .05em; color: var(--ink-3); }
+.drive em { font-style: normal; font-family: var(--mono); font-size: 10px; color: var(--ink-4); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.drive .dline { height: 2px; border-radius: 1px; background: rgba(10, 10, 10, .075); margin: 7px 0 6px; overflow: hidden; }
+.drive .dline i { display: block; height: 100%; border-radius: 1px; background: var(--ink-4); }
+.drive .dnum { font-family: var(--mono); font-size: 9.5px; color: var(--ink-4); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.drive.on { border-color: rgba(0, 47, 167, .28); background: rgba(0, 47, 167, .045); }
+.drive.on b { color: var(--ikb); }
+.drive.on em, .drive.on .dnum { color: var(--ikb); opacity: .7; }
+.drive.on .dline { background: rgba(0, 47, 167, .18); }
+.drive.on .dline i { background: var(--ikb); }
+
+/* ---------- 状态行 ---------- */
+.statusline {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 18px 10px; font-size: 11.5px; color: var(--ink-3);
+}
+.pathlabel { font-family: var(--mono); font-size: 11.5px; color: var(--ink); letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%; flex: none; }
+.statusline .spacer { flex: 1; min-width: 8px; }
+.statusline .dim, .statusline .muted { font-variant-numeric: tabular-nums; }
+.warnchip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--danger);
+  background: rgba(161, 43, 43, .07); border-radius: 999px; padding: 2px 9px;
+  white-space: nowrap;
+}
+.warnchip i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* ---------- 按钮 ---------- */
+.ghost {
+  background: transparent; color: var(--ink-3);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 4px 11px; font-size: 11.5px;
+  transition: color .12s, border-color .12s, background .12s; white-space: nowrap;
+}
+.ghost:hover:not(:disabled) { color: var(--ink); border-color: var(--tint-2); background: var(--tint); }
+.ghost:disabled { opacity: .45; cursor: not-allowed; }
+.ghost.tiny { padding: 3px 9px; font-size: 11px; }
+.ghost.wide { width: 100%; }
+.primary {
+  background: var(--ikb); color: #fff; border-radius: 8px;
+  padding: 9px 14px; font-weight: 600; font-size: 12.5px; width: 100%;
+  transition: background .12s;
+}
+.primary:hover:not(:disabled) { background: #00268c; }
+.primary:disabled { opacity: 1; cursor: not-allowed; background: var(--tint); color: var(--ink-4); }
+
+/* ---------- 扫描进度 ---------- */
+.progress {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 18px 10px; font-size: 11.5px; color: var(--ink-3);
+}
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--ikb); animation: pulse 1s infinite; flex: none; }
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
+.mono { font-family: var(--mono); letter-spacing: -.01em; }
+.small { font-size: 11px; }
+.muted { color: var(--ink-3); }
+.center { text-align: center; }
+
+.error {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 0 18px 10px; padding: 8px 12px; font-size: 11.5px;
+  background: rgba(161, 43, 43, .07); color: var(--danger);
+  border-radius: 9px;
+}
+.error.inline { margin: 6px 0 0; }
+.error button { color: var(--danger); font-size: 15px; line-height: 1; }
+
+.main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+/* ---------- 下拉（单位 / 服务商 / 模型） ---------- */
+.dd { position: relative; flex: none; }
+/* 弹窗里的「服务商」「模型」两个胶囊原来是无边框透明底，跟白色卡片完全融在一起，
+   用户的原话是"看不出来"。补上描边后与同屏的 input 一致；顶栏那个「单位」也走这套，
+   所以顶栏和弹窗里看到的是同一种控件。 */
+.dd-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card); color: var(--ink-2);
+  border: 1px solid var(--ctl); border-radius: 7px; padding: 5px 10px; font-size: 12px;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.dd-btn:hover, .dd-btn.open { background: var(--tint); color: var(--ink); border-color: #cec8b8; }
+.dd-cap { color: var(--ink-4); font-size: 11px; }
+.dd-val { font-weight: 500; }
+.dd-caret { color: var(--ink-4); font-size: 8px; }
+.dd-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 60;
+  min-width: 148px; padding: 5px;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(10, 10, 10, .1);
+}
+.dd-item {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  border-radius: 7px; padding: 6px 8px; font-size: 12px; color: var(--ink-2); text-align: left;
+  white-space: nowrap;
+}
+.dd-item > span { white-space: nowrap; }
+.dd-item:hover { background: var(--tint); }
+.dd-item.on { background: var(--ikb-07); color: var(--ikb); }
+.dd-item em { font-style: normal; color: var(--ink-4); font-size: 11px; margin-left: 14px; white-space: nowrap; }
+.dd-tick { width: 12px; color: var(--ikb); font-size: 11px; flex: none; }
+
+/* ---------- 文件树 ---------- */
+.split { flex: 1; display: flex; min-height: 0; gap: 10px; padding: 0 12px 0 6px; }
+.viewpane { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; min-height: 0; }
+
+.tree {
+  flex: 1; min-width: 0; overflow: auto; position: relative; outline: none;
+  padding: 0 0 0 6px;
+}
+.tree:focus-visible { box-shadow: inset 0 0 0 1px var(--tint-2); border-radius: 10px; }
+
+.treehead, .trow {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 88px 92px 64px 68px 104px 84px 34px;
+  align-items: center;
+  gap: 0;
+}
+/* 表头是一块浅底圆角条，不是黑条也不是下划线。
+   字号/字族在表头这一层写死：早先各列直接沿用列体样式，于是「名称」是
+   sans 11px、「大小」是等宽 11.5px、「最后修改」是等宽 10.5px —— 一排放
+   过去像三种字号，等宽那两列在浅底上尤其糊。现在统一 sans 11.5px、--ink-2；
+   列体（数字、日期）仍用等宽，那是给数据对齐用的，跟表头不是一回事。 */
+.treehead {
+  position: sticky; top: 0; z-index: 3;
+  height: 30px; padding: 0 10px; margin: 6px 0 2px;
+  border-radius: 8px; background: var(--tint);
+  font-family: var(--sans); font-size: 11.5px; color: var(--ink-2);
+  letter-spacing: .02em; font-variant-numeric: tabular-nums;
+}
+.treehead button, .treehead span {
+  background: none; border: 0; color: var(--ink-2); font: inherit;
+  font-size: 11.5px; font-weight: 500; letter-spacing: .02em;
+  text-align: right; padding: 0; overflow: hidden; white-space: nowrap;
+}
+.treehead button:hover { color: var(--ink); }
+.treehead .on { color: var(--ink); font-weight: 600; }
+.treehead .car { font-size: 9px; margin-left: 4px; color: var(--ink); }
+.treehead .c-name { text-align: left; padding-left: 24px; }
+
+.treespacer { position: relative; }
+.treeslice { position: absolute; top: 0; left: 0; right: 0; will-change: transform; }
+
+.trow {
+  height: 33px; padding: 0 10px; border-radius: 8px;
+  cursor: default; white-space: nowrap; transition: background .1s;
+}
+.trow:hover { background: rgba(10, 10, 10, .035); }
+.trow.sel { background: var(--ikb-07); }
+.trow.sel .nm { font-weight: 600; }
+.trow.denied .nm { color: var(--danger); }
+
+.trow .c-name { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.indent { flex: none; }
+/* 三角用旋转的方块画，行高 33px 时整列都是可点区域。 */
+.arrow {
+  width: 20px; height: 24px; flex: none; margin-left: -4px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-4); font-size: 9px; cursor: pointer;
+  transform: rotate(0deg); transition: transform .15s, color .15s;
+  -webkit-user-select: none; user-select: none; border-radius: 4px;
+}
+.arrow:hover { color: var(--ikb); }
+.arrow.none { visibility: hidden; pointer-events: none; }
+.arrow.open { transform: rotate(90deg); }
+.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 2px; }
+.nm.is-dir { font-weight: 500; }
+.nm.grp { color: var(--ink-3); font-weight: 400; }
+.deny, .warn {
+  font-family: var(--mono); font-size: 9.5px; color: var(--danger);
+  background: rgba(161, 43, 43, .07); border: 0; border-radius: 999px;
+  padding: 2px 7px; margin-left: 7px; letter-spacing: .03em; flex: none;
+}
+
+.trow .c-num { text-align: right; font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; overflow: hidden; }
+.trow .sz { color: var(--ink); font-size: 12px; }
+.trow .mut { color: var(--ink-3); }
+
+/* 「占父级」：数字在上、46px 细条在下，两者锁在一个 flex 列里。
+   分开摆过一次，条看起来像下划线或悬空杂物，所以别再改回去。 */
+.pctcell { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
+.pctcell em { font-style: normal; font-family: var(--mono); font-size: 11px; line-height: 1; color: var(--ink-2); letter-spacing: -.02em; }
+.pctcell em.muted { color: var(--ink-4); }
+.pctcell .track { width: 44px; height: 2px; border-radius: 1px; background: rgba(10, 10, 10, .07); overflow: hidden; flex: none; }
+.pctcell .track i { display: block; height: 100%; border-radius: 1px; background: rgba(10, 10, 10, .32); transition: background .12s; }
+.trow:hover .pctcell .track i, .trow.sel .pctcell .track i { background: var(--ikb); }
+.trow.sel .pctcell em { color: var(--ikb); }
+
+.c-tag { display: flex; align-items: center; justify-content: flex-end; gap: 7px; overflow: hidden; }
+.c-tag .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.c-tag .ct { font-size: 11.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+
+/* 日期列原来 10.5px，比同排的「类型」小一档，浅灰底上几乎认不出。
+   抬到 11px 与其它等宽列同档，仍然比正文轻，但看得清。 */
+.c-date { text-align: right; font-family: var(--mono); font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; letter-spacing: -.01em; overflow: hidden; }
+.c-ai { display: flex; justify-content: flex-end; }
+.rowai {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .05em; color: var(--ikb);
+  background: var(--ikb-07); border: 0; border-radius: 999px; padding: 2px 6px;
+  opacity: 0; transition: opacity .12s, background .12s;
+}
+.trow:hover .rowai, .trow.sel .rowai { opacity: 1; }
+.rowai:hover { background: rgba(0, 47, 167, .16); }
+
+/* 磁盘块视图 */
+.blockpane { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.crumbs {
+  display: flex; align-items: center; gap: 10px; padding: 0 10px 8px; font-size: 11.5px;
+}
+.crumbs code { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.crumbs .small { flex: none; }
+.treemap-wrap { position: relative; flex: 1; min-width: 0; border-radius: 10px; overflow: hidden; }
+.treemap-wrap canvas { display: block; cursor: pointer; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 9px;
+  padding: 7px 10px; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px;
+  max-width: 250px; box-shadow: 0 10px 26px rgba(10, 10, 10, .12);
+}
+.tip b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.tip span { font-family: var(--mono); font-size: 11px; color: var(--ikb); }
+.tip em { font-style: normal; color: var(--ink); }
+.tip small { color: var(--ink-4); }
+.empty-inline { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-3); }
+
+/* ---------- 侧栏 ---------- */
+/* 侧栏比纸色再白一档（#fff 对 #fefdfb），刚好够把「工作区 / 详情卡」分开，
+   又不会浮成一张贴上去的卡片；试过整块纸色压深到 #f9f7f1 —— 树区跟着变灰，
+   反而喧宾夺主。
+   早先它是贴着窗口右边的一条无圆角白带、只靠左 1px 线分界；现在改成一张
+   独立的圆角白卡（同 .tree 的 10px 那道弧），右侧留出 12px 纸色，跟树区
+   右侧的留白对称，看上去才像一块「详情卡」而不是一条抽屉。 */
+.side {
+  width: 336px; flex: none; background: var(--card);
+  border: 1px solid var(--rule); border-radius: 10px;
+  overflow: hidden;
+  display: flex; flex-direction: column; min-height: 0; margin-bottom: 10px;
+}
+.side-top { padding: 15px 16px 0; display: flex; flex-direction: column; gap: 7px; flex: none; }
+.side-head, .eyebrow {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 11px; color: var(--ink-4); letter-spacing: .02em;
+}
+.selname {
+  font-family: var(--disp); font-weight: 400; font-size: 17.5px; line-height: 1.28;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.selpaths, .selpath {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-4);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.01em;
+}
+.selpaths code { flex: 1; min-width: 0; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.selpaths .ghost { flex: none; }
+
+/* 元信息一律做成灰药丸，横向一行一个事实，比堆五行小字好扫。 */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.chip {
+  font-size: 11px; color: var(--ink-3); background: var(--tint);
+  border-radius: 999px; padding: 3px 9px; font-variant-numeric: tabular-nums; letter-spacing: .01em;
+  white-space: nowrap;
+}
+.chip b { font-weight: 600; color: var(--ink-2); }
+.chip.v { font-weight: 600; }
+
+.side-meta {
+  flex: none; max-height: 38%; overflow: auto;
+  padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.side-bot {
+  flex: 1 1 auto; min-height: 0; overflow: auto;
+  margin-top: 12px; padding: 12px 16px 12px;
+  border-top: 1px solid var(--rule);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.side-bot.solo { margin-top: 12px; }
+.side-foot {
+  flex: none; padding: 11px 16px 13px; border-top: 1px solid var(--rule);
+  font-size: 10px; color: var(--ink-4); line-height: 1.65;
+}
+.aipath { font-family: var(--mono); font-size: 10px; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verdict {
+  font-size: 10.5px; border: 0; border-radius: 999px; padding: 2px 9px;
+  white-space: nowrap; font-weight: 600;
+}
+.hint { color: var(--ink-3); font-size: 11.5px; line-height: 1.65; margin: 2px 0; }
+
+.linkish {
+  flex: none; background: none; border: 0; padding: 2px 6px; margin: -2px -6px;
+  color: var(--ikb); font: inherit; font-size: 11.5px; white-space: nowrap;
+  border-radius: 6px; transition: background .12s;
+}
+.linkish:hover:not(:disabled) { background: var(--ikb-07); }
+.linkish:disabled { color: var(--ink-4); cursor: not-allowed; }
+.aibox-acts { display: flex; gap: 10px; align-items: center; }
+.aiout {
+  white-space: pre-wrap; background: var(--tint); border: 1px solid transparent;
+  border-radius: 9px; padding: 10px 12px; font: 12.5px/1.75 var(--sans); margin: 4px 0 0;
+  color: var(--ink-2);
+}
+/* 判词块：浅绿底圆角，不再是瑞士风的一条横线。 */
+.aiverdict {
+  margin-top: 10px; background: rgba(13, 107, 58, .07); border-radius: 9px;
+  padding: 10px 12px; display: flex; gap: 8px; align-items: flex-start;
+}
+.aiverdict .vs { width: 6px; height: 6px; border-radius: 50%; background: var(--safe); flex: none; margin-top: 6px; }
+.aiverdict .vt { font-size: 11.5px; line-height: 1.65; color: var(--safe); }
+.empty { padding: 24px; text-align: center; color: var(--ink-3); }
+
+/* ---------- 底部构成条 ---------- */
+.compo { flex: none; padding: 12px 18px 14px; background: var(--paper); }
+.compo-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.compo-head .t { font-size: 10px; letter-spacing: .1em; color: var(--ink-4); white-space: nowrap; }
+.compo-head .p { font-family: var(--mono); font-size: 10px; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.01em; }
+.compo-head .spacer { flex: 1; min-width: 8px; }
+.vlegend { display: flex; align-items: center; gap: 12px; font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+.vlegend span { display: inline-flex; align-items: center; gap: 5px; }
+.vlegend i { width: 6px; height: 6px; border-radius: 50%; }
+.compobar { display: flex; gap: 2px; height: 14px; }
+.compobar > b { height: 100%; min-width: 3px; border-radius: 4px; cursor: default; transition: transform .12s; }
+.compobar > b:hover { transform: translateY(-2px); }
+.compobar-empty { display: block; width: 100%; height: 100%; background: var(--tint-2); border-radius: 4px; }
+.compo-legend { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 9px; font-size: 11.5px; color: var(--ink-2); }
+.compo-legend > span { display: inline-flex; align-items: center; gap: 6px; cursor: default; white-space: nowrap; }
+.compo-legend > span > i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.compo-legend em { font-family: var(--mono); font-style: normal; font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.compo-legend > span:hover { color: var(--ikb); }
+.compo-tip {
+  position: absolute; z-index: 20; width: 296px;
+  transform: translateY(calc(-100% - 10px));
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 9px 11px; box-shadow: 0 12px 30px rgba(10, 10, 10, .12);
+  display: flex; flex-direction: column; gap: 3px; pointer-events: none;
+}
+.compo-tip b { font-size: 12px; }
+.compo-tip span { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+.compo-tip small { font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+
+/* ---------- 首屏 ---------- */
+.intro { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; text-align: center; }
+.intro h1 { font-family: var(--disp); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: .005em; }
+.intro p { color: var(--ink-3); margin: 0; font-size: 12px; }
+
+/* ---------- AI 设置弹窗 ---------- */
+.modal-back { position: fixed; inset: 0; background: rgba(20, 20, 18, .22); display: grid; place-items: center; z-index: 20; }
+.modal {
+  width: min(620px, 92vw); background: var(--card); border: 1px solid var(--rule);
+  border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px;
+  max-height: 86vh; overflow: auto; box-shadow: 0 24px 60px rgba(10, 10, 10, .16);
+}
+.modal h2 { margin: 0 0 2px; font-family: var(--disp); font-weight: 400; font-size: 19px; }
+.modal label { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+.modal input {
+  background: var(--paper); color: var(--ink); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; outline: none;
+  font-family: var(--mono);
+}
+.modal input:focus { border-color: rgba(0, 47, 167, .4); }
+.airow { display: flex; gap: 8px; align-items: center; }
+.airow > input { flex: 1; min-width: 0; }
+.airow > .dd { flex: none; }
+.aiendpoint {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 8px;
+  padding: 8px 10px; font-size: 11.5px; color: var(--ink-3);
+}
+.ai-provhint { margin: -2px 0 2px; }
+.provrow-line { margin-top: 2px; }
+.ai-target { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+.ai-target > div { flex: 1; overflow: hidden; }
+.ai-target .primary { width: auto; white-space: nowrap; }
